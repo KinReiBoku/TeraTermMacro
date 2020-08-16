@@ -1,0 +1,154 @@
+; バージョン 4.61以降
+; ホスト設定ファイルディレクトリ
+dir_hostconf = ''
+; ログディレクトリ
+dir_log = ''
+
+
+; 処理開始
+
+
+; 現在のディレクトリを取得する
+getdir dir
+strmatch dir '.*\$'
+if result = 0 then
+	strconcat dir '\'
+endif
+
+messagebox dir "messagebox"
+
+; ホスト設定ファイルのディレクトリパスを生成する
+strlen dir_hostconf
+if result = 0 then
+	sprintf2 dir_hostconf '%s%s' dir 'include\'
+endif
+
+; ログディレクトリパスを生成する
+strlen dir_log
+if result = 0 then
+	sprintf2 dir_log '%s%s' dir 'log\'
+endif
+
+; ホスト設定ファイルを検索する
+setdir dir_hostconf
+extpat='*.conf'
+cnt = 1
+
+findfirst dh extpat filename
+
+while result
+	cnt = cnt+1
+	findnext dh filename
+endwhile
+
+findclose dh
+
+; リストボックス
+strdim array_host cnt
+array_host[0] = '手動入力する'
+cnt = cnt-1
+
+findfirst dh extpat filename
+
+i = 1
+while cnt
+	strreplace filename 1 '\.txt' '.doc'
+	array_host[i] = filename
+	i = i+1
+	cnt = cnt-1
+	findnext dh filename
+endwhile
+
+findclose dh
+
+; リストボックスを表示する
+listbox '接続先を選んでください' '接続先選択' array_host
+
+; 入力を待避する
+ret = result
+
+; キャンセルされた場合
+if ret == -1 then
+	end
+; 手動入力の場合
+elseif ret == 0 then
+	; ホスト名入力
+	inputbox 'ホスト名またはIPアドレスを入力してください' 'ホスト名'
+	host = inputstr
+	strlen host 
+	if result = 0 then 
+		messagebox '入力エラー：終了します' '入力エラー' 
+		end 
+	endif
+	; ユーザ名入力
+	inputbox 'ユーザ名を入力してください' 'ユーザ名'
+	user = inputstr
+	strlen user 
+	if result = 0 then 
+		messagebox '入力エラー：終了します' '入力エラー' 
+		end 
+	endif
+	; パスワード名入力
+	inputbox 'パスワードを入力してください' 'パスワード'
+	pass = inputstr
+	strlen pass 
+	if result = 0 then 
+		messagebox '入力エラー：終了します' '入力エラー' 
+		end 
+	endif
+; それ以外の場合
+else
+	; 設定ファイル名（ホスト名.conf）を生成する
+	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf array_host[ret]
+	; 設定ファイルを読込む
+	include file_hostconf
+
+	; インクルード先の設定ファイルがある場合
+	strlen include_hostconf
+	while result > 0
+		; インクルード先の設定ファイル名（ホスト名.conf）を生成する
+		sprintf2 file_hostconf_include '%s%s.conf 'dir_hostconf include_hostconf
+		; 変数をクリア
+		include_hostconf=''
+		; インクルード先の設定ファイルを読込む
+		include file_hostconf_include
+		strlen include_hostconf
+	endwhile
+endif
+
+; connectで使う文字列を生成する
+sprintf2 data_connect '/ssh %s /auth=password /user=%s /passwd=%s' host user pass
+
+; 接続する
+connect data_connect
+
+; タイムスタンプを取得する
+gettime data_time "%Y%m%d_%H%M%S"
+; ログファイル名を生成する
+sprintf2 file_log '%s%s_teraterm_%s.log' dir_log host data_time
+; ログを開始する
+logopen filename 0 1 0 1
+logwrite array_host[ret]
+logwrite #13#10#13#10
+logwrite 'Connect: '
+logwrite msg
+logwrite #13#10#13#10
+
+; 接続済みホストを代入する
+host_connected=host
+; 設定ファイルを読込む
+include file_hostconf
+; インクルードする設定ファイルがある場合
+strcompare host_connected host
+while result <> 0
+	; 設定ファイル名（ホスト名.conf）を生成する
+	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf include_hostconf
+	; 変数をクリア
+	include_hostconf=''
+	; 設定ファイルを読込む
+	include file_hostconf
+	strlen include_hostconf
+endwhile
+
+; マクロ終了
+end
