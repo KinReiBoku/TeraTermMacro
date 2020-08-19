@@ -32,30 +32,30 @@ endif
 ; ホスト設定ファイルを検索する
 setdir dir_hostconf
 extpat='*.conf'
-cnt = 1
+array_host_cnt = 1
 
 findfirst dh extpat filename
 
 while result
-	cnt = cnt+1
+	array_host_cnt = array_host_cnt+1
 	findnext dh filename
 endwhile
 
 findclose dh
 
 ; リストボックス
-strdim array_host cnt
+strdim array_host array_host_cnt
 array_host[0] = '手動入力する'
-cnt = cnt-1
+array_host_cnt = array_host_cnt-1
 
 findfirst dh extpat filename
 
 i = 1
-while cnt
+while array_host_cnt
 	strreplace filename 1 '\.txt' '.doc'
 	array_host[i] = filename
 	i = i+1
-	cnt = cnt-1
+	array_host_cnt = array_host_cnt-1
 	findnext dh filename
 endwhile
 
@@ -103,9 +103,14 @@ else
 	; 設定ファイルを読込む
 	include file_hostconf
 
+	; 接続情報配列カウンタを初期化する
+	array_connect_cnt = 0
+
 	; インクルード先の設定ファイルがある場合
 	strlen include_hostconf
 	while result > 0
+		; 接続情報配列カウンタをインクリメントする
+		array_connect_cnt = array_connect_cnt+1
 		; インクルード先の設定ファイル名（ホスト名.conf）を生成する
 		sprintf2 file_hostconf_include '%s%s.conf 'dir_hostconf include_hostconf
 		; 変数をクリア
@@ -114,10 +119,43 @@ else
 		include file_hostconf_include
 		strlen include_hostconf
 	endwhile
+
+	; 接続情報配列カウンタを生成する
+	strdim array_connect_host array_connect_cnt
+	strdim array_connect_user array_connect_cnt
+	strdim array_connect_pass array_connect_cnt
+
+	; 設定ファイル名（ホスト名.conf）を生成する
+	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf array_host[ret]
+	; 設定ファイルを読込む
+	include file_hostconf
+
+	; カウンタを初期化する
+	cnt = 0
+
+	; 接続情報を代入する
+	array_connect_host[cnt] = host
+	array_connect_user[cnt] = user
+	array_connect_pass[cnt] = pass
+
+	while array_connect_cnt > cnt
+		; インクルード先の設定ファイル名（ホスト名.conf）を生成する
+		sprintf2 file_hostconf_include '%s%s.conf 'dir_hostconf include_hostconf
+		; 設定ファイルを読込む
+		include file_hostconf_include
+		; 接続情報配列カウンタをインクリメントする
+		array_connect_cnt = array_connect_cnt+1
+		; 接続情報を代入する
+		array_connect_host[cnt] = host
+		array_connect_user[cnt] = user
+		array_connect_pass[cnt] = pass
+	endwhile
 endif
 
+; カウンタを初期化する
+cnt = 0
 ; connectで使う文字列を生成する
-sprintf2 data_connect '/ssh %s /auth=password /user=%s /passwd=%s' host user pass
+sprintf2 data_connect '/ssh %s /auth=password /user=%s /passwd=%s' array_connect_host[cnt] array_connect_user[cnt] array_connect_pass[cnt]
 
 ; 接続する
 connect data_connect
@@ -134,20 +172,13 @@ logwrite 'Connect: '
 logwrite msg
 logwrite #13#10#13#10
 
-; 接続済みホストを代入する
-host_connected=host
-; 設定ファイルを読込む
-include file_hostconf
-; インクルードする設定ファイルがある場合
-strcompare host_connected host
-while result <> 0
-	; 設定ファイル名（ホスト名.conf）を生成する
-	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf include_hostconf
-	; 変数をクリア
-	include_hostconf=''
-	; 設定ファイルを読込む
-	include file_hostconf
-	strlen include_hostconf
+while array_connect_cnt > cnt
+	; 接続情報配列カウンタをインクリメントする 
+	array_connect_cnt = array_connect_cnt+1
+	; 接続情報を代入する
+	array_connect_host[cnt] = host
+	array_connect_user[cnt] = user
+	array_connect_pass[cnt] = pass
 endwhile
 
 ; マクロ終了
