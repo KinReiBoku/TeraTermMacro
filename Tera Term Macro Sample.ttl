@@ -152,13 +152,14 @@ else
 	endwhile
 endif
 
-; カウンタを初期化する
-cnt = 0
 ; connectで使う文字列を生成する
 sprintf2 data_connect '/ssh %s /auth=password /user=%s /passwd=%s' array_connect_host[cnt] array_connect_user[cnt] array_connect_pass[cnt]
 
 ; 接続する
 connect data_connect
+
+; 接続情報配列カウンタをデクリメントする 
+array_connect_cnt = array_connect_cnt-1
 
 ; タイムスタンプを取得する
 gettime data_time "%Y%m%d_%H%M%S"
@@ -172,13 +173,30 @@ logwrite 'Connect: '
 logwrite msg
 logwrite #13#10#13#10
 
-while array_connect_cnt > cnt
-	; 接続情報配列カウンタをインクリメントする 
-	array_connect_cnt = array_connect_cnt+1
+; プロンプトを代入する
+prompt1 = '#'
+prompt2 = '$'
+
+; プロンプトを待つ
+wait prompt1 prompt2
+
+while array_connect_cnt > 0
+	; 接続情報配列カウンタをデクリメントする 
+	array_connect_cnt = array_connect_cnt-1
 	; 接続情報を代入する
 	array_connect_host[cnt] = host
 	array_connect_user[cnt] = user
 	array_connect_pass[cnt] = pass
+	; ssh接続する
+	command = ''
+	strconcat command 'ssh -XC'
+	strconcat command user
+	strconcat command '@'
+	strconcat command host
+	sendln command
+	wait "password: "
+	sendln pass
+	wait prompt1 prompt2
 endwhile
 
 ; マクロ終了
