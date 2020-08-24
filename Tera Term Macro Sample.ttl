@@ -99,7 +99,7 @@ else
 	; 初期化する
 	include_hostconf = ''
 	; 設定ファイル名（ホスト名.conf）を生成する
-	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf array_host[ret]
+	sprintf2 file_hostconf '%s%s.conf' dir_hostconf array_host[ret]
 	; 設定ファイルを読込む
 	include file_hostconf
 
@@ -126,7 +126,7 @@ else
 	strdim array_connect_pass array_connect_cnt
 
 	; 設定ファイル名（ホスト名.conf）を生成する
-	sprintf2 file_hostconf '%s%s.conf 'dir_hostconf array_host[ret]
+	sprintf2 file_hostconf '%s%s.conf' dir_hostconf array_host[ret]
 	; 設定ファイルを読込む
 	include file_hostconf
 
@@ -169,7 +169,7 @@ gettime data_time "%Y%m%d_%H%M%S"
 ; ログファイル名を生成する
 sprintf2 file_log '%s%s_teraterm_%s.log' dir_log array_host[ret] data_time
 ; ログを開始する
-logopen filename 0 1 0 1
+logopen file_log 0 1 0 1
 logwrite array_host[ret]
 logwrite #13#10#13#10
 logwrite 'Connect: '
